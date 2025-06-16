@@ -36,14 +36,30 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// ```
 ///
 class PanoramaCreator extends StatefulWidget {
+  /// Callback function that is called when an error occurs during panorama creation.
   final Function(String errorMessage)? onError;
+
+  /// Callback function that is called when the panorama is successfully created.
   final Function(String panoramaPath) onSuccess;
+
+  /// Start panorama button widget.
+  /// Fallbacks to a play icon if not provided.
   final Widget? startWidget;
+
+  /// Stop panorama button widget.
+  /// Fallbacks to a stop icon if not provided.
   final Widget? stopWidget;
+
+  /// Widget displayed while the panorama is being processed and while the camera is being initialized.
   final Widget? loadingWidget;
+
+  /// Whether to display the current angle and photo count status.
   final bool displayStatus;
+
+  /// Background color of the panorama creator widget, displayed behind the camera preview and buttons.
   final Color backgroundColor;
 
+  /// Creates a PanoramaCreator widget that allows users to capture and stitch photos into a panorama.
   const PanoramaCreator({
     super.key,
     this.onError,
