@@ -1,3 +1,7 @@
+## 0.0.4
+
+Added the possibility to customize the UI labels.
+
 ## 0.0.3
 
 Created an example and wrote better single API documentation.
