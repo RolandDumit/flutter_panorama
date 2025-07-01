@@ -19,6 +19,9 @@ class PanoramaExample extends StatelessWidget {
       },
       startWidget: const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
       stopWidget: const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white),
+      startText: 'Start Panorama',
+      angleStatusText: 'Angle',
+      photoCountStatusText: 'Stop Panorama',
     );
   }
 }

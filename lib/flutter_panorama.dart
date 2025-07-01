@@ -17,6 +17,8 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// [loadingWidget] is displayed while the panorama is being processed. Fallbacks to [CircularProgressIndicator] if not provided.
 /// [displayStatus] controls whether to show the current angle and photo count status.
 /// [backgroundColor] sets the background color of the widget, defaulting to black.
+/// [angleStatusText] and [photoCountStatusText] allow customization of the status text labels while panorama is being captured, defaulting to "Angle" and "Photos" respectively.
+/// [startText] is the text displayed on the start button when panorama is not active, defaulting to "Press start to begin panorama".
 ///
 /// Example usage:
 /// ```dart
@@ -32,6 +34,9 @@ import 'package:sensors_plus/sensors_plus.dart';
 ///   },
 ///   startWidget: const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
 ///   stopWidget: const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white),
+///   startText: 'Press start to begin panorama', // optional
+///   angleStatusText: 'Angle', // optional
+///   photoCountStatusText: 'Photos', // optional
 /// );
 /// ```
 ///
@@ -59,6 +64,18 @@ class PanoramaCreator extends StatefulWidget {
   /// Background color of the panorama creator widget, displayed behind the camera preview and buttons.
   final Color backgroundColor;
 
+  /// The angle status text, displayed in the status area if [displayStatus] is true.
+  /// If not provided, the label will default to english "Angle".
+  final String? angleStatusText;
+
+  /// The photo count status text, displayed in the status area if [displayStatus] is true.
+  /// If not provided, the label will default to english "Photos".
+  final String? photoCountStatusText;
+
+  /// The text displayed on the start button, displayed in the status area if [displayStatus] is true.
+  /// If not provided, the label will default to english "Press start to begin panorama".
+  final String? startText;
+
   /// Creates a PanoramaCreator widget that allows users to capture and stitch photos into a panorama.
   const PanoramaCreator({
     super.key,
@@ -69,6 +86,9 @@ class PanoramaCreator extends StatefulWidget {
     this.loadingWidget,
     this.displayStatus = false,
     this.backgroundColor = Colors.black,
+    this.angleStatusText,
+    this.photoCountStatusText,
+    this.startText,
   });
 
   @override
@@ -285,8 +305,8 @@ class _PanoramaCreatorState extends State<PanoramaCreator> {
                             decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
                             child: Text(
                               _isPanoramaActive
-                                  ? 'Angle: ${_currentZAngle.toStringAsFixed(1)}°\nPhotos: ${_capturedPhotos.length}'
-                                  : 'Press start to begin panorama',
+                                  ? '${widget.angleStatusText ?? 'Angle'} ${_currentZAngle.toStringAsFixed(1)}°\n${widget.photoCountStatusText ?? 'Photos'} ${_capturedPhotos.length}'
+                                  : widget.startText ?? 'Press start to begin panorama',
                               style: const TextStyle(color: Colors.white),
                               textAlign: TextAlign.center,
                             ),
