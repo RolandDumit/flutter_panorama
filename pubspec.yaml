@@ -1,6 +1,6 @@
 name: flutter_panorama
 description: "Flutter package for snaping panorama photos with OpenCV and a simple interface."
-version: 0.0.3
+version: 0.0.4
 homepage: https://github.com/RolandDumit/flutter_panorama
 
 environment:
