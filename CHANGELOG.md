@@ -1,13 +1,13 @@
 ## 1.0.0
 
-• Panorama stitching now happens in a separate isolate for improved performance.
-• Ne wloading indicator when panorama is processing.
-• You can now choose the return type: filePath or bytes (Uint8List).
-• onSuccess returns a String path or Uint8List based on returnType.
-• Added save directory path parameter to customize where the panorama is saved if returnType is filePath.
-• Handled lifecycle changes.
-• Correctly handled subscriptions.
-• Corrected camera preview UI to adapt to all screen sizes.
+* Panorama stitching now happens in a separate isolate for improved performance.
+* Ne wloading indicator when panorama is processing.
+* You can now choose the return type: filePath or bytes (Uint8List).
+* onSuccess returns a String path or Uint8List based on returnType.
+* Added save directory path parameter to customize where the panorama is saved if returnType is filePath.
+* Handled lifecycle changes.
+* Correctly handled subscriptions.
+* Corrected camera preview UI to adapt to all screen sizes.
 
 ## 0.0.4
 
