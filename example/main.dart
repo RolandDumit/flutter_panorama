@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_panorama/enums/panorama_return_type.dart';
 import 'package:flutter_panorama/flutter_panorama.dart';
 
 class PanoramaExample extends StatelessWidget {
@@ -7,6 +8,7 @@ class PanoramaExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PanoramaCreator(
+      returnType: PanoramaReturnType.filePath, // or PanoramaReturnType.bytes
       saveDirectoryPath: 'path/to/save/directory', // Replace with your desired path
       displayStatus: true, // optional
       backgroundColor: Colors.black, // optional

@@ -3,15 +3,19 @@ import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_panorama/enums/panorama_return_type.dart';
 import 'package:opencv_dart/opencv.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// A widget that allows users to create panoramas by capturing photos while rotating the device.
 /// It uses the device's gyroscope to detect rotation and automatically captures photos at specific angle delta.
 /// The captured photos are then stitched together to create a panorama image using OpenCV.
 ///
-/// Provide [onSuccess] callback to handle the panorama creation success case,
+/// [returnType] to specify how the panorama will be returned (as a file path or bytes). Defaults to [PanoramaReturnType.filePath].
+/// [saveDirectoryPath] specifies where the panorama images will be saved. If return type is [PanoramaReturnType.filePath], and [saveDirectoryPath] is null, it will default to [getApplicationDocumentsDirectory] from path_provider.
 /// [onError] callback to handle errors, and optional widgets for start/stop actions and loading state.
+/// [onSuccess] handles the panorama creation success case. Returns the panorama file path if [returnType] is [PanoramaReturnType.filePath], or a Uint8List if [returnType] is [PanoramaReturnType.bytes].
 /// [startWidget] and [stopWidget] can be customized to change the appearance of the start/stop buttons. They fallback to basic play/stop icons if not provided.
 /// [loadingWidget] is displayed while the panorama is being processed. Fallbacks to [CircularProgressIndicator] if not provided.
 /// [displayStatus] controls whether to show the current angle and photo count status.
@@ -22,6 +26,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// Example usage:
 /// ```dart
 /// PanoramaCreator(
+///   returnType: PanoramaReturnType.filePath, // or PanoramaReturnType.bytes
 ///   saveDirectoryPath: getApplicationDocumentsDirectory(),
 ///   displayStatus: true, // optional
 ///   backgroundColor: Colors.black, // optional
@@ -41,14 +46,19 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// ```
 ///
 class PanoramaCreator extends StatefulWidget {
+  /// The return type for the panorama creation process.
+  /// It defines how the PanoramaCreator will return the panorama image.
+  /// If not provided, it defaults to [PanoramaReturnType.filePath].
+  final PanoramaReturnType returnType;
+
   /// Path to the directory where the panorama images will be saved.
-  final String saveDirectoryPath;
+  final String? saveDirectoryPath;
 
   /// Callback function that is called when an error occurs during panorama creation.
   final Function(String errorMessage)? onError;
 
   /// Callback function that is called when the panorama is successfully created.
-  final Function(String panoramaPath) onSuccess;
+  final Function(dynamic) onSuccess;
 
   /// Start panorama button widget.
   /// Fallbacks to a play icon if not provided.
@@ -82,7 +92,8 @@ class PanoramaCreator extends StatefulWidget {
   /// Creates a PanoramaCreator widget that allows users to capture and stitch photos into a panorama.
   const PanoramaCreator({
     super.key,
-    required this.saveDirectoryPath,
+    this.returnType = PanoramaReturnType.filePath,
+    this.saveDirectoryPath,
     required this.onSuccess,
     this.onError,
     this.startWidget,
@@ -244,12 +255,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
     }
 
     try {
-      // Get application documents directory for saving the panorama
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final directoryPath = widget.saveDirectoryPath.characters.last == '/'
-          ? widget.saveDirectoryPath.substring(0, widget.saveDirectoryPath.length - 1)
-          : widget.saveDirectoryPath;
-      final panoramaPath = '$directoryPath/panorama_$timestamp.jpg';
+      dynamic result;
 
       // Load the images using OpenCV
       List<Mat> images = [];
@@ -280,8 +286,25 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
         widget.onError?.call('Panorama stitching failed with status: $status');
       }
 
-      // Save the result
-      imwrite(panoramaPath, dst);
+      // If return type is file path
+      if (widget.returnType == PanoramaReturnType.filePath) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+        final directoryPath = widget.saveDirectoryPath == null
+            ? getApplicationDocumentsDirectory()
+            : widget.saveDirectoryPath!.characters.last == '/'
+                ? widget.saveDirectoryPath!.substring(0, widget.saveDirectoryPath!.length - 1)
+                : widget.saveDirectoryPath;
+
+        final panoramaPath = '$directoryPath/panorama_$timestamp.jpg';
+
+        // Save the result
+        imwrite(panoramaPath, dst);
+      } else {
+        // If return type is bytes
+        final panoramaBytes = imencode('.jpeg', dst);
+        result = panoramaBytes;
+      }
 
       // Clean up OpenCV resources
       for (var img in images) {
@@ -290,7 +313,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
       dst.dispose();
 
       if (mounted) {
-        widget.onSuccess(panoramaPath);
+        widget.onSuccess(result);
       }
     } catch (e) {
       widget.onError?.call('Failed to create panorama: ${e.toString()}');
