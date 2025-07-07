@@ -1,15 +1,35 @@
 import 'package:opencv_dart/opencv.dart';
 
+/// A utility class for stitching panoramas in an isolate.
+/// Provides keys for parameters and return values.
 class PanoramaIsolate {
+  /// Parameters key for image paths
   static const String kImagePaths = 'imagePaths';
+
+  /// Parameters key to return success status
   static const String kSuccess = 'success';
+
+  /// Parameters key for error messages
   static const String kError = 'error';
+
+  /// Parameters key for bytes of the stitched image
   static const String kBytes = 'bytes';
+
+  /// Parameters key for return type of the stitched image
   static const String kReturnType = 'returnType';
+
+  /// Possible return type for bytes of the stitched image
   static const String kReturnTypeBytes = 'bytes';
+
+  /// Possible return type for file path of the stitched image
   static const String kReturnTypeFilePath = 'filePath';
+
+  /// Parameters key for file path where the stitched image will be saved
   static const String kFilePath = 'filePath';
 
+  /// Runs the panorama stitching in an isolate.
+  /// Takes a map of parameters including image paths, return type, and file path.
+  /// Returns a map with success status, error message, bytes of the stitched image, or file path.
   static Map<String, dynamic> stitchInIsolate(Map<String, dynamic> params) {
     final returnType = params[kReturnType] as String;
     final String filePath = params[kFilePath] as String;
