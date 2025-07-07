@@ -104,7 +104,10 @@ class PanoramaCreator extends StatefulWidget {
     this.angleStatusText,
     this.photoCountStatusText,
     this.startText,
-  });
+  }) : assert(
+          returnType != PanoramaReturnType.filePath || (saveDirectoryPath != null && saveDirectoryPath != ''),
+          'When using PanoramaReturnType.filePath, saveDirectoryPath must be provided and not empty.',
+        );
 
   @override
   State<PanoramaCreator> createState() => _PanoramaCreatorState();
