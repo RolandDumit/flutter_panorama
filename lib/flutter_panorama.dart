@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_panorama/enums/panorama_return_type.dart';
-import 'package:opencv_dart/opencv.dart';
+import 'package:flutter_panorama/utils/panorama_isolate.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -260,60 +261,34 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
     try {
       dynamic result;
 
-      // Load the images using OpenCV
-      List<Mat> images = [];
-      for (XFile photo in _capturedPhotos) {
-        Mat img = imread(photo.path);
-        if (img.isEmpty) {
-          widget.onError?.call('Failed to load image: ${photo.path}');
-          continue;
-        }
-        images.add(img);
-      }
+      final imagePaths = _capturedPhotos.map((photo) => photo.path).toList();
 
-      if (images.length < 2) {
-        widget.onError?.call('Not enough valid images to create a panorama');
-      }
+      final isolateResult = await compute(PanoramaIsolate.stitchInIsolate, {
+        PanoramaIsolate.kReturnType: widget.returnType == PanoramaReturnType.bytes
+            ? PanoramaIsolate.kReturnTypeBytes
+            : PanoramaIsolate.kReturnTypeFilePath,
+        PanoramaIsolate.kFilePath: widget.saveDirectoryPath ?? '',
+        PanoramaIsolate.kImagePaths: imagePaths,
+      });
+      /*   final isolateResult = await Isolate.run(() => PanoramaIsolate.stitchInIsolate({
+            PanoramaIsolate.kReturnType: widget.returnType == PanoramaReturnType.bytes
+                ? PanoramaIsolate.kReturnTypeBytes
+                : PanoramaIsolate.kReturnTypeFilePath,
+            PanoramaIsolate.kFilePath: widget.saveDirectoryPath ?? '',
+            // PanoramaIsolate.kImagePaths: imagePaths,
+          }));*/
 
-      // Create a stitcher and stitch the images
-      Stitcher stitcher = Stitcher.create(mode: StitcherMode.PANORAMA);
-      final estimateResult = stitcher.estimateTransform(images.cvd);
-      if (estimateResult != StitcherStatus.OK) {
-        widget.onError?.call('Failed to estimate transform: $estimateResult');
+      if (!(isolateResult['success'] as bool)) {
+        widget.onError?.call('Panorama stitching failed: ${isolateResult['error']}');
         return;
       }
 
-      final (status, dst) = await stitcher.stitchAsync(images.cvd);
-
-      if (status != StitcherStatus.OK) {
-        widget.onError?.call('Panorama stitching failed with status: $status');
-      }
-
-      // If return type is file path
+      // Check the return type and get the result
       if (widget.returnType == PanoramaReturnType.filePath) {
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-        final directoryPath = widget.saveDirectoryPath == null
-            ? getApplicationDocumentsDirectory()
-            : widget.saveDirectoryPath!.characters.last == '/'
-                ? widget.saveDirectoryPath!.substring(0, widget.saveDirectoryPath!.length - 1)
-                : widget.saveDirectoryPath;
-
-        final panoramaPath = '$directoryPath/panorama_$timestamp.jpg';
-
-        // Save the result
-        imwrite(panoramaPath, dst);
+        result = isolateResult[PanoramaIsolate.kFilePath] as String;
       } else {
-        // If return type is bytes
-        final (status, bytes) = imencode('.jpeg', dst);
-        result = bytes;
+        result = isolateResult[PanoramaIsolate.kBytes] as Uint8List;
       }
-
-      // Clean up OpenCV resources
-      for (var img in images) {
-        img.dispose();
-      }
-      dst.dispose();
 
       if (mounted) {
         widget.onSuccess(result);
