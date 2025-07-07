@@ -332,13 +332,9 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    if (_isProcessing || _isInitializingCamera || controller == null || !controller!.value.isInitialized) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return Scaffold(
       backgroundColor: widget.backgroundColor,
-      body: _isProcessing || controller == null
+      body: _isInitializingCamera || controller == null || !controller!.value.isInitialized
           ? Center(child: CircularProgressIndicator())
           : SafeArea(
               top: false,
@@ -362,7 +358,8 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
                       mainAxisAlignment: MainAxisAlignment.end,
                       spacing: 8,
                       children: [
-                        if (widget.displayStatus)
+                        // Status display
+                        if (widget.displayStatus && !_isProcessing)
                           Center(
                             child: Container(
                               padding: const EdgeInsets.all(8),
@@ -376,17 +373,24 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
                               ),
                             ),
                           ),
+                        // Start/Stop button
                         Flexible(
                           child: FittedBox(
                             child: Padding(
                               padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16),
                               child: GestureDetector(
-                                onTap: () => _isPanoramaActive ? _stopPanorama(context) : _startPanorama(),
-                                child: _isPanoramaActive
-                                    ? widget.stopWidget ??
-                                        const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white)
-                                    : widget.startWidget ??
-                                        const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
+                                onTap: () => _isProcessing
+                                    ? null
+                                    : _isPanoramaActive
+                                        ? _stopPanorama(context)
+                                        : _startPanorama(),
+                                child: _isProcessing
+                                    ? CircularProgressIndicator()
+                                    : _isPanoramaActive
+                                        ? widget.stopWidget ??
+                                            const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white)
+                                        : widget.startWidget ??
+                                            const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
                               ),
                             ),
                           ),
