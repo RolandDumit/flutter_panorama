@@ -7,6 +7,7 @@ class PanoramaExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PanoramaCreator(
+      saveDirectoryPath: 'path/to/save/directory', // Replace with your desired path
       displayStatus: true, // optional
       backgroundColor: Colors.black, // optional
       loadingWidget: const CircularProgressIndicator(), // optional
