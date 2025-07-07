@@ -1,6 +1,7 @@
 ## Features
 
 This package provides a simple way to create panoramic images from a series of photos taken with the camera. It supports both Android and iOS platforms and allows users to stitch images together to create a 360-degree panorama using OpenCV.
+The images stitching process is done in a separate isolate to ensure smooth performance without blocking the UI thread.
 
 ![Panorama Creator Interface](screenshots/example_screenshot.jpeg)
 
@@ -10,7 +11,7 @@ To use this package, add `flutter_panorama` as a dependency in your `pubspec.yam
 
 ```yaml
 dependencies:
-  panorama_creator: ^0.0.1 # replace with the latest version
+  panorama_creator: ^1.0.0 # replace with the latest version
 ```
 
 Then, run `flutter pub get` to install the package.
