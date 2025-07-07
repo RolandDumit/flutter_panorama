@@ -305,8 +305,8 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
         imwrite(panoramaPath, dst);
       } else {
         // If return type is bytes
-        final panoramaBytes = imencode('.jpeg', dst);
-        result = panoramaBytes;
+        final (status, bytes) = imencode('.jpeg', dst);
+        result = bytes;
       }
 
       // Clean up OpenCV resources
