@@ -105,10 +105,7 @@ class PanoramaCreator extends StatefulWidget {
     this.angleStatusText,
     this.photoCountStatusText,
     this.startText,
-  }) : assert(
-          returnType != PanoramaReturnType.filePath || (saveDirectoryPath != null && saveDirectoryPath != ''),
-          'When using PanoramaReturnType.filePath, saveDirectoryPath must be provided and not empty.',
-        );
+  });
 
   @override
   State<PanoramaCreator> createState() => _PanoramaCreatorState();
@@ -262,21 +259,20 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
       dynamic result;
 
       final imagePaths = _capturedPhotos.map((photo) => photo.path).toList();
+      String saveFilePath = widget.saveDirectoryPath != null && widget.saveDirectoryPath!.isNotEmpty
+          ? widget.saveDirectoryPath!
+          : (await getApplicationDocumentsDirectory()).path;
+      saveFilePath = saveFilePath.characters.last == '/'
+          ? saveFilePath.substring(0, widget.saveDirectoryPath!.length - 1)
+          : saveFilePath;
 
       final isolateResult = await compute(PanoramaIsolate.stitchInIsolate, {
         PanoramaIsolate.kReturnType: widget.returnType == PanoramaReturnType.bytes
             ? PanoramaIsolate.kReturnTypeBytes
             : PanoramaIsolate.kReturnTypeFilePath,
-        PanoramaIsolate.kFilePath: widget.saveDirectoryPath ?? '',
+        PanoramaIsolate.kFilePath: saveFilePath,
         PanoramaIsolate.kImagePaths: imagePaths,
       });
-      /*   final isolateResult = await Isolate.run(() => PanoramaIsolate.stitchInIsolate({
-            PanoramaIsolate.kReturnType: widget.returnType == PanoramaReturnType.bytes
-                ? PanoramaIsolate.kReturnTypeBytes
-                : PanoramaIsolate.kReturnTypeFilePath,
-            PanoramaIsolate.kFilePath: widget.saveDirectoryPath ?? '',
-            // PanoramaIsolate.kImagePaths: imagePaths,
-          }));*/
 
       if (!(isolateResult['success'] as bool)) {
         widget.onError?.call('Panorama stitching failed: ${isolateResult['error']}');

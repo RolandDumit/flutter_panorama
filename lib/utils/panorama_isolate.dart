@@ -78,15 +78,17 @@ class PanoramaIsolate {
         }
 
         // Save stitched image to file
-        final saveStatus = imwrite(filePath, dst);
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final saveFilePath = '$filePath/panorama_$timestamp.jpeg';
+        final saveStatus = imwrite(saveFilePath, dst);
         if (!saveStatus) {
           disposeImages();
           disposeDst();
-          return {kSuccess: false, kError: 'Failed to save stitched image to $filePath'};
+          return {kSuccess: false, kError: 'Failed to save stitched image to $saveFilePath'};
         }
         disposeImages();
         disposeDst();
-        return {kSuccess: true, kFilePath: filePath};
+        return {kSuccess: true, kFilePath: saveFilePath};
       }
 
       // Encode result to bytes for transfer
