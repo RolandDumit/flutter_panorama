@@ -1,4 +1,8 @@
-## 1.0.0
+## 1.0.2
+
+MAJOR BUG fixed where the panorama stitching fails when selecting filePath as returnType.
+
+## 1.0.1
 
 * Panorama stitching now happens in a separate isolate for improved performance.
 * Ne wloading indicator when panorama is processing.
