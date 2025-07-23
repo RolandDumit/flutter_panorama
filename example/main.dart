@@ -8,6 +8,8 @@ class PanoramaExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PanoramaCreator(
+      minimumImageCount: 2,
+      minimumImageErrorText: 'Needs at least 2 photos for a panorama',
       returnType: PanoramaReturnType.filePath, // or PanoramaReturnType.bytes
       saveDirectoryPath: 'path/to/save/directory', // Replace with your desired path
       displayStatus: true, // optional

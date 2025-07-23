@@ -1,6 +1,8 @@
 ## 1.0.3
 
 * Changed camera package in favor of camerawesome.
+* Lowered angle delta threshold for image snapping.
+* You can now set the minimum amount of photos needed for a panorama. It cannot be lower than 2. This was introduced to support some devices that needs higher amount of images.
 * Better UI.
 * Fixed UI bug where on some devices the interface would not scale correctly.
 * Added possibility to customize the loading widgets while panorama is being created.

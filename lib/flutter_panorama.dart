@@ -16,6 +16,8 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// It uses the device's gyroscope to detect rotation and automatically captures photos at specific angle delta.
 /// The captured photos are then stitched together to create a panorama image using OpenCV.
 ///
+/// [minimumImageCount] is the minimum number of images required for panorama creation. If not provided defaults to 2.
+/// [minimumImageErrorText] is the error message shown when the minimum image count is not met. If not provided defaults to "Need at least [minimumImageCount] photos for a panorama".
 /// [returnType] to specify how the panorama will be returned (as a file path or bytes). Defaults to [PanoramaReturnType.filePath].
 /// [saveDirectoryPath] specifies where the panorama images will be saved. If return type is [PanoramaReturnType.filePath], and [saveDirectoryPath] is null, it will default to [getApplicationDocumentsDirectory] from path_provider.
 /// [onError] callback to handle errors, and optional widgets for start/stop actions and loading state.
@@ -54,6 +56,14 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// ```
 ///
 class PanoramaCreator extends StatefulWidget {
+  /// The minimum number of images required for panorama creation.
+  /// If not provided, it defaults to 2.
+  final int minimumImageCount;
+
+  /// The error message shown when the minimum image count is not met.
+  /// If not provided, it defaults to "Need at least [minimumImageCount] photos for a panorama".
+  final String? minimumImageErrorText;
+
   /// The return type for the panorama creation process.
   /// It defines how the PanoramaCreator will return the panorama image.
   /// If not provided, it defaults to [PanoramaReturnType.filePath].
@@ -107,6 +117,8 @@ class PanoramaCreator extends StatefulWidget {
   /// Creates a PanoramaCreator widget that allows users to capture and stitch photos into a panorama.
   const PanoramaCreator({
     super.key,
+    this.minimumImageCount = 2,
+    this.minimumImageErrorText,
     this.returnType = PanoramaReturnType.filePath,
     this.saveDirectoryPath,
     required this.onSuccess,
@@ -139,6 +151,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   bool _isPanoramaActive = false;
   bool _isProcessing = false;
   final List<XFile> _capturedPhotos = List<XFile>.empty(growable: true);
+  bool _showMinimumImagesError = false;
 
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   DateTime? _lastGyroEventTime;
@@ -182,6 +195,13 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   }
 
   _stopPanorama(BuildContext context) async {
+    if (_capturedPhotos.length < widget.minimumImageCount) {
+      setState(() {
+        _showMinimumImagesError = true;
+      });
+      return;
+    }
+
     if (mounted) {
       setState(() {
         _isPanoramaActive = false;
@@ -262,6 +282,11 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
                   });
                 }
               }));
+      if (mounted && _showMinimumImagesError && _capturedPhotos.length >= widget.minimumImageCount) {
+        setState(() {
+          _showMinimumImagesError = false;
+        });
+      }
     } catch (e) {
       widget.onError?.call('Error taking photo: ${e.toString()}');
     } finally {
@@ -281,103 +306,112 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.backgroundColor,
-      body: false // _isInitializingCamera || cameraState == null || cameraState?.captureMode == CaptureMode.photo
-          ? Center(child: CircularProgressIndicator())
-          : SizedBox(
-              height: MediaQuery.sizeOf(context).height,
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  CameraAwesomeBuilder.custom(
-                    saveConfig: SaveConfig.photo(),
-                    sensorConfig: SensorConfig.single(sensor: Sensor.type(SensorType.wideAngle)),
-                    previewFit: CameraPreviewFit.cover,
-                    onMediaCaptureEvent: (capture) {},
-                    builder: (CameraState state, AnalysisPreview preview) {
-                      state.when(
-                        onPreparingCamera: (state) {
-                          return const Center(child: CircularProgressIndicator());
-                        },
-                        onPhotoMode: (state) {
-                          photoState = state;
-                        },
-                      );
+      body: SizedBox(
+        height: MediaQuery.sizeOf(context).height,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            CameraAwesomeBuilder.custom(
+              saveConfig: SaveConfig.photo(),
+              sensorConfig: SensorConfig.single(sensor: Sensor.type(SensorType.wideAngle)),
+              previewFit: CameraPreviewFit.cover,
+              onMediaCaptureEvent: (capture) {},
+              builder: (CameraState state, AnalysisPreview preview) {
+                state.when(
+                  onPreparingCamera: (state) {
+                    return Center(
+                        child: widget.loadingWidget ?? SpinKitThreeBounce(color: widget.loaderColor, size: 30));
+                  },
+                  onPhotoMode: (state) {
+                    photoState = state;
+                  },
+                );
 
-                      return Column(
-                        spacing: 8,
-                        children: [
-                          Spacer(),
-                          // Status display
-                          if (widget.displayStatus)
-                            Center(
-                              child: ClipRSuperellipse(
-                                borderRadius: BorderRadius.circular(8),
+                return Column(
+                  spacing: 8,
+                  children: [
+                    if (_showMinimumImagesError)
+                      Padding(
+                        padding: EdgeInsets.only(top: 16 + MediaQuery.viewPaddingOf(context).top),
+                        child: textContainer(widget.minimumImageErrorText ??
+                            'Need at least ${widget.minimumImageCount} photos for a panorama'),
+                      ),
+
+                    Spacer(),
+
+                    // Status display
+                    if (widget.displayStatus)
+                      Center(
+                        child: textContainer(
+                          _isProcessing
+                              ? widget.loadingText ?? 'Creating panorama'
+                              : _isPanoramaActive
+                                  ? '${widget.angleStatusText ?? 'Angle'} ${_currentZAngle.toStringAsFixed(1)}°\n${widget.photoCountStatusText ?? 'Photos'} ${_capturedPhotos.length}'
+                                  : widget.startText ?? 'Press start to begin panorama',
+                        ),
+                      ),
+                    // Start/Stop button
+                    Padding(
+                      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16),
+                      child: GestureDetector(
+                        onTap: () => _isProcessing
+                            ? null
+                            : _isPanoramaActive
+                                ? _stopPanorama(context)
+                                : _startPanorama(),
+                        child: _isProcessing
+                            ? widget.loadingWidget ?? SpinKitThreeBounce(color: widget.loaderColor, size: 30)
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(40),
                                 child: BackdropFilter(
                                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                                   child: Container(
-                                    padding: const EdgeInsets.all(8),
+                                    width: 80,
+                                    height: 80,
                                     decoration: ShapeDecoration(
-                                      color: Colors.black.withAlpha((.2 * 255).toInt()),
-                                      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                    child: Text(
-                                      _isProcessing
-                                          ? widget.loadingText ?? 'Creating panorama'
-                                          : _isPanoramaActive
-                                              ? '${widget.angleStatusText ?? 'Angle'} ${_currentZAngle.toStringAsFixed(1)}°\n${widget.photoCountStatusText ?? 'Photos'} ${_capturedPhotos.length}'
-                                              : widget.startText ?? 'Press start to begin panorama',
-                                      style: const TextStyle(color: Colors.white),
-                                      textAlign: TextAlign.center,
+                                        shape: CircleBorder(), color: Colors.black.withAlpha((.1 * 255).toInt())),
+                                    child: Center(
+                                      child: AnimatedCrossFade(
+                                        firstChild: widget.stopWidget ??
+                                            const Icon(Icons.stop_circle_rounded, size: 80, color: Colors.white),
+                                        secondChild: widget.startWidget ??
+                                            const Icon(Icons.play_circle_fill_rounded, size: 80, color: Colors.white),
+                                        crossFadeState:
+                                            _isPanoramaActive ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                                        duration: const Duration(milliseconds: 200),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          // Start/Stop button
-                          Padding(
-                            padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16),
-                            child: GestureDetector(
-                              onTap: () => _isProcessing
-                                  ? null
-                                  : _isPanoramaActive
-                                      ? _stopPanorama(context)
-                                      : _startPanorama(),
-                              child: _isProcessing
-                                  ? widget.loadingWidget ?? SpinKitThreeBounce(color: widget.loaderColor, size: 30)
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(40),
-                                      child: BackdropFilter(
-                                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                                        child: Container(
-                                          width: 80,
-                                          height: 80,
-                                          decoration: ShapeDecoration(
-                                              shape: CircleBorder(), color: Colors.black.withAlpha((.1 * 255).toInt())),
-                                          child: Center(
-                                            child: AnimatedCrossFade(
-                                              firstChild: widget.stopWidget ??
-                                                  const Icon(Icons.stop_circle_rounded, size: 80, color: Colors.white),
-                                              secondChild: widget.startWidget ??
-                                                  const Icon(Icons.play_circle_fill_rounded,
-                                                      size: 80, color: Colors.white),
-                                              crossFadeState: _isPanoramaActive
-                                                  ? CrossFadeState.showFirst
-                                                  : CrossFadeState.showSecond,
-                                              duration: const Duration(milliseconds: 200),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
+          ],
+        ),
+      ),
     );
   }
+
+  Widget textContainer(String text) => ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(8),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: ShapeDecoration(
+              color: Colors.black.withAlpha((.2 * 255).toInt()),
+              shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              text,
+              style: const TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
 }
