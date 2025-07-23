@@ -282,7 +282,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
                   });
                 }
               }));
-      if (mounted && _showMinimumImagesError && _capturedPhotos.length >= widget.minimumImageCount) {
+      if (mounted && _capturedPhotos.length >= widget.minimumImageCount) {
         setState(() {
           _showMinimumImagesError = false;
         });
