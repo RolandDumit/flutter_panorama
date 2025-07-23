@@ -11,10 +11,10 @@ To use this package, add `flutter_panorama` as a dependency in your `pubspec.yam
 
 ```yaml
 dependencies:
-  panorama_creator: ^1.0.0 # replace with the latest version
+  panorama_creator: ^1.0.3 # replace with the latest version
 ```
 
-Then, run `flutter pub get` to install the package.
+Run `flutter pub get` to install the package.
 
 Then, import the package in your Dart code:
 
@@ -22,8 +22,15 @@ Then, import the package in your Dart code:
 import 'package:flutter_panorama/flutter_panorama.dart';
 ```
 
+# Platform specific configurations
+
+**Make sure to correctly set up platform specific configurations for camerawesome to properly work.
+Take a look at [camerawesome](https://pub.dev/packages/camerawesome) for more information.**
+
+# Third party dependencies
+
 To work, flutter_panorama uses the following dependencies:
-- camera
+- camerawesome
 - sensors_plus
 - opencv_dart
 - path_provider
