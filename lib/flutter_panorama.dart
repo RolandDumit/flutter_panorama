@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:camera/camera.dart';
+import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_panorama/enums/panorama_return_type.dart';
 import 'package:flutter_panorama/utils/panorama_isolate.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -18,8 +21,10 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// [onError] callback to handle errors, and optional widgets for start/stop actions and loading state.
 /// [onSuccess] handles the panorama creation success case. Returns the panorama file path if [returnType] is [PanoramaReturnType.filePath], or a Uint8List if [returnType] is [PanoramaReturnType.bytes].
 /// [startWidget] and [stopWidget] can be customized to change the appearance of the start/stop buttons. They fallback to basic play/stop icons if not provided.
-/// [loadingWidget] is displayed while the panorama is being processed. Fallbacks to [CircularProgressIndicator] if not provided.
 /// [displayStatus] controls whether to show the current angle and photo count status.
+/// [loaderColor] controls the default loader color.
+/// [loadingText] sets the text shown during panorama creation.
+/// [loadingWidget] overrides the default loader widget while panorama is being processed.
 /// [backgroundColor] sets the background color of the widget, defaulting to black.
 /// [angleStatusText] and [photoCountStatusText] allow customization of the status text labels while panorama is being captured, defaulting to "Angle" and "Photos" respectively.
 /// [startText] is the text displayed on the start button when panorama is not active, defaulting to "Press start to begin panorama".
@@ -32,6 +37,8 @@ import 'package:sensors_plus/sensors_plus.dart';
 ///   displayStatus: true, // optional
 ///   backgroundColor: Colors.black, // optional
 ///   loadingWidget: const CircularProgressIndicator(), // optional
+///   loadingText: 'Loading...' // optional, defaults to 'Creating panorama'
+///   loaderColor: Colors.white // optional
 ///   onError: (error) {
 ///     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Panorama error: $error')));
 ///   },
@@ -78,6 +85,13 @@ class PanoramaCreator extends StatefulWidget {
   /// Background color of the panorama creator widget, displayed behind the camera preview and buttons.
   final Color backgroundColor;
 
+  /// Progress indicator color.
+  final Color loaderColor;
+
+  /// The text displayed during loading phase, while the panorama is created.
+  /// If not provided, the label will default to english "Creating panorama".
+  final String? loadingText;
+
   /// The angle status text, displayed in the status area if [displayStatus] is true.
   /// If not provided, the label will default to english "Angle".
   final String? angleStatusText;
@@ -102,6 +116,8 @@ class PanoramaCreator extends StatefulWidget {
     this.loadingWidget,
     this.displayStatus = false,
     this.backgroundColor = Colors.black,
+    this.loaderColor = Colors.white,
+    this.loadingText,
     this.angleStatusText,
     this.photoCountStatusText,
     this.startText,
@@ -112,7 +128,8 @@ class PanoramaCreator extends StatefulWidget {
 }
 
 class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingObserver {
-  CameraController? controller;
+  // CameraController? controller;
+  PhotoCameraState? photoState;
 
   // Variables for rotation tracking
   double _currentZAngle = 0.0;
@@ -121,80 +138,10 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   bool _takingPhoto = false;
   bool _isPanoramaActive = false;
   bool _isProcessing = false;
-  bool _isInitializingCamera = false;
   final List<XFile> _capturedPhotos = List<XFile>.empty(growable: true);
 
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   DateTime? _lastGyroEventTime;
-
-  @override
-  void initState() {
-    super.initState();
-    _initController();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = controller;
-
-    // App state changed before we got the chance to initialize.
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      debugPrint('Camera not initialized, skipping lifecycle handling');
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      debugPrint('AppLifecycleState.inactive: Pausing camera');
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      debugPrint('AppLifecycleState.resumed: Reinitializing camera');
-      _initController(cameraDescription: cameraController.description);
-    }
-  }
-
-  Future<void> _initController({CameraDescription? cameraDescription}) async {
-    if (mounted) {
-      setState(() {
-        _isInitializingCamera = true;
-        _isProcessing = false;
-      });
-    }
-
-    final cameras = await availableCameras();
-
-    if (cameras.isNotEmpty) {
-      controller = CameraController(
-        cameraDescription ?? cameras.first,
-        ResolutionPreset.high,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
-      );
-
-      await controller?.initialize().then((_) {
-        if (!mounted) return;
-        setState(() {});
-      }).catchError((Object e) {
-        if (e is CameraException) {
-          switch (e.code) {
-            case 'CameraAccessDenied':
-              widget.onError?.call('Panorama error: Camera access denied');
-              break;
-            default:
-              widget.onError?.call('Panorama error: ${e.description}');
-              break;
-          }
-        }
-      });
-    } else {
-      widget.onError?.call('No cameras found');
-    }
-
-    if (mounted) {
-      setState(() {
-        _isInitializingCamera = false;
-      });
-    }
-  }
 
   _startPanorama() {
     _capturedPhotos.clear();
@@ -223,7 +170,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
 
         // Check if we've rotated enough since last photo
         double angleDelta = (_currentZAngle - _lastPhotoZAngle).abs();
-        if (angleDelta >= _angleDeltaThreshold && !_takingPhoto && (controller?.value.isInitialized ?? false)) {
+        if (angleDelta >= _angleDeltaThreshold && !_takingPhoto && photoState?.captureMode == CaptureMode.photo) {
           _takePhoto();
           _lastPhotoZAngle = _currentZAngle;
         }
@@ -301,16 +248,20 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   }
 
   _takePhoto() async {
-    if (_takingPhoto || controller == null) return;
+    if (_takingPhoto || photoState == null) return;
 
     _takingPhoto = true;
     try {
-      final XFile photo = await controller!.takePicture();
-      if (mounted) {
-        setState(() {
-          _capturedPhotos.add(photo);
-        });
-      }
+      photoState!.takePhoto(
+          onPhoto: (captureRequest) => captureRequest.when(single: (captureRequest) {
+                if (mounted) {
+                  setState(() {
+                    if (captureRequest.file != null) {
+                      _capturedPhotos.add(captureRequest.file!);
+                    }
+                  });
+                }
+              }));
     } catch (e) {
       widget.onError?.call('Error taking photo: ${e.toString()}');
     } finally {
@@ -321,7 +272,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   @override
   void dispose() {
     _gyroscopeSubscription?.cancel();
-    controller?.dispose();
+    photoState?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -330,69 +281,99 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.backgroundColor,
-      body: _isInitializingCamera || controller == null || !controller!.value.isInitialized
+      body: false // _isInitializingCamera || cameraState == null || cameraState?.captureMode == CaptureMode.photo
           ? Center(child: CircularProgressIndicator())
-          : SafeArea(
-              top: false,
-              child: Column(
-                spacing: 8,
-                mainAxisSize: MainAxisSize.min,
+          : SizedBox(
+              height: MediaQuery.sizeOf(context).height,
+              child: Stack(
+                alignment: Alignment.bottomCenter,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: CameraPreview(controller!),
-                    ),
-                  ),
+                  CameraAwesomeBuilder.custom(
+                    saveConfig: SaveConfig.photo(),
+                    sensorConfig: SensorConfig.single(sensor: Sensor.type(SensorType.wideAngle)),
+                    previewFit: CameraPreviewFit.cover,
+                    onMediaCaptureEvent: (capture) {},
+                    builder: (CameraState state, AnalysisPreview preview) {
+                      state.when(
+                        onPreparingCamera: (state) {
+                          return const Center(child: CircularProgressIndicator());
+                        },
+                        onPhotoMode: (state) {
+                          photoState = state;
+                        },
+                      );
 
-                  // Start button
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      spacing: 8,
-                      children: [
-                        // Status display
-                        if (widget.displayStatus && !_isProcessing)
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
-                              child: Text(
-                                _isPanoramaActive
-                                    ? '${widget.angleStatusText ?? 'Angle'} ${_currentZAngle.toStringAsFixed(1)}°\n${widget.photoCountStatusText ?? 'Photos'} ${_capturedPhotos.length}'
-                                    : widget.startText ?? 'Press start to begin panorama',
-                                style: const TextStyle(color: Colors.white),
-                                textAlign: TextAlign.center,
+                      return Column(
+                        spacing: 8,
+                        children: [
+                          Spacer(),
+                          // Status display
+                          if (widget.displayStatus)
+                            Center(
+                              child: ClipRSuperellipse(
+                                borderRadius: BorderRadius.circular(8),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: ShapeDecoration(
+                                      color: Colors.black.withAlpha((.2 * 255).toInt()),
+                                      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    child: Text(
+                                      _isProcessing
+                                          ? widget.loadingText ?? 'Creating panorama'
+                                          : _isPanoramaActive
+                                              ? '${widget.angleStatusText ?? 'Angle'} ${_currentZAngle.toStringAsFixed(1)}°\n${widget.photoCountStatusText ?? 'Photos'} ${_capturedPhotos.length}'
+                                              : widget.startText ?? 'Press start to begin panorama',
+                                      style: const TextStyle(color: Colors.white),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        // Start/Stop button
-                        Flexible(
-                          child: FittedBox(
-                            child: Padding(
-                              padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16),
-                              child: GestureDetector(
-                                onTap: () => _isProcessing
-                                    ? null
-                                    : _isPanoramaActive
-                                        ? _stopPanorama(context)
-                                        : _startPanorama(),
-                                child: _isProcessing
-                                    ? CircularProgressIndicator()
-                                    : _isPanoramaActive
-                                        ? widget.stopWidget ??
-                                            const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white)
-                                        : widget.startWidget ??
-                                            const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
-                              ),
+                          // Start/Stop button
+                          Padding(
+                            padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16),
+                            child: GestureDetector(
+                              onTap: () => _isProcessing
+                                  ? null
+                                  : _isPanoramaActive
+                                      ? _stopPanorama(context)
+                                      : _startPanorama(),
+                              child: _isProcessing
+                                  ? widget.loadingWidget ?? SpinKitThreeBounce(color: widget.loaderColor, size: 30)
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(40),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                        child: Container(
+                                          width: 80,
+                                          height: 80,
+                                          decoration: ShapeDecoration(
+                                              shape: CircleBorder(), color: Colors.black.withAlpha((.1 * 255).toInt())),
+                                          child: Center(
+                                            child: AnimatedCrossFade(
+                                              firstChild: widget.stopWidget ??
+                                                  const Icon(Icons.stop_circle_rounded, size: 80, color: Colors.white),
+                                              secondChild: widget.startWidget ??
+                                                  const Icon(Icons.play_circle_fill_rounded,
+                                                      size: 80, color: Colors.white),
+                                              crossFadeState: _isPanoramaActive
+                                                  ? CrossFadeState.showFirst
+                                                  : CrossFadeState.showSecond,
+                                              duration: const Duration(milliseconds: 200),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

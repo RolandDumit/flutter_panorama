@@ -13,6 +13,8 @@ class PanoramaExample extends StatelessWidget {
       displayStatus: true, // optional
       backgroundColor: Colors.black, // optional
       loadingWidget: const CircularProgressIndicator(), // optional
+      loadingText: 'Creating panorama', // optional, already defaults to 'Creating panorama'
+      loaderColor: Colors.white, // optional
       onError: (error) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Panorama error: $error')));
       },

@@ -1,3 +1,11 @@
+## 1.0.3
+
+* Changed camera package in favor of camerawesome.
+* Better UI.
+* Fixed UI bug where on some devices the interface would not scale correctly.
+* Added possibility to customize the loading widgets while panorama is being created.
+* Updated opencv_dart dependency to latest version.
+
 ## 1.0.2
 
 MAJOR BUG fixed where the panorama stitching fails when selecting filePath as returnType.
