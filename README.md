@@ -11,7 +11,7 @@ To use this package, add `flutter_panorama` as a dependency in your `pubspec.yam
 
 ```yaml
 dependencies:
-  panorama_creator: ^1.0.3 # replace with the latest version
+  panorama_creator: ^1.1.0 # replace with the latest version
 ```
 
 Run `flutter pub get` to install the package.

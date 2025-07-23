@@ -1,4 +1,4 @@
-## 1.0.3
+## 1.1.0
 
 * Changed camera package in favor of camerawesome.
 * Lowered angle delta threshold for image snapping.
