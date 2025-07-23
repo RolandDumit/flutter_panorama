@@ -134,7 +134,7 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
   // Variables for rotation tracking
   double _currentZAngle = 0.0;
   double _lastPhotoZAngle = 0.0;
-  final double _angleDeltaThreshold = 15.0; // Take photo every 15 degrees
+  final double _angleDeltaThreshold = 5.0; // Take photo every 15 degrees
   bool _takingPhoto = false;
   bool _isPanoramaActive = false;
   bool _isProcessing = false;
