@@ -21,8 +21,13 @@ class PanoramaExample extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Panorama error: $error')));
       },
       onSuccess: (panoramaPath) {
-        /// Navigate to a viewer or display the panorama.
-        /// [panoramaPath] is the path to the created panorama image.
+        // Navigate to a viewer or display the panorama.
+        // [panoramaPath] is the path to the created panorama image.
+        // Navigator.of(context).push(MaterialPageRoute(builder: (context) => PanoramaViewer(file: File(panoramaPath))));
+      },
+      onAllPhotosSnapped: () {
+        // optional. Called when all photos were snapped but the processing is not finished yet.
+        Navigator.of(context).pop();
       },
       startWidget: const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
       stopWidget: const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white),

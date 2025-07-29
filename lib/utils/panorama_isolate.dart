@@ -31,31 +31,30 @@ class PanoramaIsolate {
   /// Takes a map of parameters including image paths, return type, and file path.
   /// Returns a map with success status, error message, bytes of the stitched image, or file path.
   static Map<String, dynamic> stitchInIsolate(Map<String, dynamic> params) {
-    final returnType = params[kReturnType] as String;
-    final String filePath = params[kFilePath] as String;
-    final List<String> imagePaths = params[kImagePaths] as List<String>;
-
-    // Load images in isolate
-    List<Mat> images = [];
-    for (String path in imagePaths) {
-      Mat img = imread(path);
-      if (!img.isEmpty) {
-        images.add(img);
-      }
-    }
-
-    disposeImages() {
-      for (var img in images) {
-        img.dispose();
-      }
-    }
-
-    if (images.length < 2) {
-      disposeImages();
-      return {kSuccess: false, kError: 'Not enough valid images'};
-    }
-
     try {
+      final returnType = params[kReturnType] as String;
+      final String filePath = params[kFilePath] as String;
+      final List<String> imagePaths = params[kImagePaths] as List<String>;
+
+      // Load images in isolate
+      List<Mat> images = [];
+      for (String path in imagePaths) {
+        Mat img = imread(path);
+        if (!img.isEmpty) {
+          images.add(img);
+        }
+      }
+
+      disposeImages() {
+        for (var img in images) {
+          img.dispose();
+        }
+      }
+
+      if (images.length < 2) {
+        disposeImages();
+        return {kSuccess: false, kError: 'Not enough valid images'};
+      }
       // Create stitcher and stitch
       Stitcher stitcher = Stitcher.create(mode: StitcherMode.PANORAMA);
       final (status, dst) = stitcher.stitch(images.cvd); // Use sync version in isolate

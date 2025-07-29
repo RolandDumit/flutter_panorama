@@ -18,10 +18,11 @@ import 'package:sensors_plus/sensors_plus.dart';
 ///
 /// [minimumImageCount] is the minimum number of images required for panorama creation. If not provided defaults to 2.
 /// [minimumImageErrorText] is the error message shown when the minimum image count is not met. If not provided defaults to "Need at least [minimumImageCount] photos for a panorama".
-/// [returnType] to specify how the panorama will be returned (as a file path or bytes). Defaults to [PanoramaReturnType.filePath].
-/// [saveDirectoryPath] specifies where the panorama images will be saved. If return type is [PanoramaReturnType.filePath], and [saveDirectoryPath] is null, it will default to [getApplicationDocumentsDirectory] from path_provider.
+/// [returnType] sets how the panorama will be returned (as a file path or bytes). Defaults to [PanoramaReturnType.filePath].
+/// [saveDirectoryPath] sets where the panorama images will be saved. If return type is [PanoramaReturnType.filePath], and [saveDirectoryPath] is null, it will default to [getApplicationDocumentsDirectory] from path_provider.
 /// [onError] callback to handle errors, and optional widgets for start/stop actions and loading state.
 /// [onSuccess] handles the panorama creation success case. Returns the panorama file path if [returnType] is [PanoramaReturnType.filePath], or a Uint8List if [returnType] is [PanoramaReturnType.bytes].
+/// [onAllPhotosSnapped] callback function called when all photos are snapped. It can be used to handle at will the ui after photos are snapped. e.g. pop the camera ui after all photos are snapped and wait for the success callback to be called.
 /// [startWidget] and [stopWidget] can be customized to change the appearance of the start/stop buttons. They fallback to basic play/stop icons if not provided.
 /// [displayStatus] controls whether to show the current angle and photo count status.
 /// [loaderColor] controls the default loader color.
@@ -47,6 +48,9 @@ import 'package:sensors_plus/sensors_plus.dart';
 ///   onSuccess: (panoramaPath) {
 ///     Navigator.of(context).push(MaterialPageRoute(builder: (context) => PanoramaViewer(file: File(panoramaPath))));
 ///   },
+///   onAllPhotosSnapped: () {
+///     Navigator.of(context).pop();
+///   }
 ///   startWidget: const Icon(Icons.play_circle_fill_rounded, size: 70, color: Colors.white),
 ///   stopWidget: const Icon(Icons.stop_circle_outlined, size: 70, color: Colors.white),
 ///   startText: 'Press start to begin panorama', // optional
@@ -77,6 +81,10 @@ class PanoramaCreator extends StatefulWidget {
 
   /// Callback function that is called when the panorama is successfully created.
   final Function(dynamic) onSuccess;
+
+  /// Callback function that is called when all photos are snapped.
+  /// It can be used to handle at will the ui after photos are snapped. e.g. pop the camera ui after all photos are snapped and wait for the success callback to be called.
+  final VoidCallback? onAllPhotosSnapped;
 
   /// Start panorama button widget.
   /// Fallbacks to a play icon if not provided.
@@ -122,6 +130,7 @@ class PanoramaCreator extends StatefulWidget {
     this.returnType = PanoramaReturnType.filePath,
     this.saveDirectoryPath,
     required this.onSuccess,
+    this.onAllPhotosSnapped,
     this.onError,
     this.startWidget,
     this.stopWidget,
@@ -189,12 +198,18 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
         }
 
         setState(() {});
+
+        if (_currentZAngle.abs() >= 360 && context.mounted) {
+          _stopPanorama(context);
+        }
       }
       _lastGyroEventTime = now;
     });
   }
 
   _stopPanorama(BuildContext context) async {
+    widget.onAllPhotosSnapped?.call();
+
     if (_capturedPhotos.length < widget.minimumImageCount) {
       setState(() {
         _showMinimumImagesError = true;
