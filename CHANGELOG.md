@@ -1,3 +1,9 @@
+## 1.2.0
+
+* New **onAllPhotosSnapped** callback, notifies you when all photos were snapped and processing has begun. Read more on the Readme section on how to use it.
+* When rotating to 360° the snapping aitomatically ends and processing begins.
+* Updated opencv_dart minimum dependency version to 1.4.3
+
 ## 1.1.0
 
 * Changed camera package in favor of camerawesome.
