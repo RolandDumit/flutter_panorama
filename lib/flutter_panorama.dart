@@ -190,6 +190,11 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
         final yRotationDelta = event.y * seconds * (180.0 / pi);
         _currentZAngle += yRotationDelta;
 
+        if (_currentZAngle.abs() >= 350 && context.mounted) {
+          _stopPanorama(context);
+          return;
+        }
+
         // Check if we've rotated enough since last photo
         double angleDelta = (_currentZAngle - _lastPhotoZAngle).abs();
         if (angleDelta >= _angleDeltaThreshold && !_takingPhoto && photoState?.captureMode == CaptureMode.photo) {
@@ -198,10 +203,6 @@ class _PanoramaCreatorState extends State<PanoramaCreator> with WidgetsBindingOb
         }
 
         setState(() {});
-
-        if (_currentZAngle.abs() >= 360 && context.mounted) {
-          _stopPanorama(context);
-        }
       }
       _lastGyroEventTime = now;
     });
