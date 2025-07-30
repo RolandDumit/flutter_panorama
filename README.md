@@ -5,8 +5,6 @@ The images stitching process is done in a separate isolate to ensure smooth perf
 
 The PanoramaCreator widget provides a full camera interface, including a start/stop button that begins an automatic photo-snapping process every 5°, and stops it to trigger the panorama generation.
 
-[//]: # (![Panorama Creator Interface]&#40;screenshots/example_screenshot.jpeg&#41;)
-
 ## Getting started
 
 To use this package, add `flutter_panorama` as a dependency in your `pubspec.yaml` file.
